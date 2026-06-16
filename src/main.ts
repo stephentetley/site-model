@@ -44,6 +44,12 @@ function runDot<A>(fn: Dot<A>): {state: number, w: Array<ModelElement>, ans: A} 
     return fn(1, [])
 }
 
+function outputDot<A>(fn: Dot<A>): string {
+    let ans = runDot(fn);
+    let lines = ans.w.map(show).join("\n")
+    return lines
+
+}
 
 function getDot<A>(fn: Dot<A>, ns: number, w: Array<ModelElement>): {state: number, w: Array<ModelElement>, ans: A} { 
     return fn(ns, w)
@@ -64,4 +70,52 @@ function fmap<A, B>(func: (a: A) => B, m: Dot<A>): Dot<B> {
         return {state: st1, w: w1, ans: b}
     }
 }
+
+function ap<A, B>(mfunc: Dot<(a: A) => B>, ma: Dot<A>): Dot<B> { 
+    return function(st: number, w: Array<ModelElement>) {
+        let {state: st1, w: w1, ans: f1} = getDot(mfunc, st, w);
+        let {state: st2, w: w2, ans: a} = getDot(ma, st1, w1);
+        let b = f1(a);
+        return {state: st2, w: w2, ans: b}
+    }
+}
+
+function liftA2<A, B, C>(fn: (a: A, b: B) => C, ma: Dot<A>, mb: Dot<B>): Dot<C> {
+    let step1 = fmap(function(a: A) { return function(b: B) { return fn(a, b) }}, ma)
+    return ap(step1, mb)
+}
+
+
+function seqLeft<A, B>(ma: Dot<A>, mb: Dot<B>): Dot<A> {
+    return liftA2(function(a: A, b: B) { return a }, ma, mb)
+}
+
+function seqRight<A, B>(ma: Dot<A>, mb: Dot<B>): Dot<B> {
+    return liftA2(function(a: A, b: B) { return b }, ma, mb)
+}
+
+function bind<A, B>(func: (a: A) => Dot<B>, ma: Dot<A>): Dot<B> { 
+    return function(st: number, w: Array<ModelElement>) {
+        let {state: st1, w: w1, ans: a} = getDot(ma, st, w);
+        return getDot(func(a), st1, w1)
+    }
+}
+
+function flatMap<A, B>(ma: Dot<A>, func: (a: A) => Dot<B>): Dot<B> { 
+    return bind(func, ma)
+}
+
+
+function node(): Dot<null> {
+    return function(st: number, w: Array<ModelElement>) {
+        let nid = `u${st}`
+        let node1 : ModelElement = {kind: "node", nid : nid} 
+        return {state: st+1, w: w.concat(node1), ans: null}
+    }
+}
+
+
+let prog1 = outputDot(seqLeft(node(), node()))
+console.log(prog1)
+
 
