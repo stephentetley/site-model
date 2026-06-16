@@ -106,16 +106,33 @@ function flatMap<A, B>(ma: Dot<A>, func: (a: A) => Dot<B>): Dot<B> {
 }
 
 
-function node(): Dot<null> {
+function node(): Dot<NodeId> {
     return function(st: number, w: Array<ModelElement>) {
         let nid = `u${st}`
         let node1 : ModelElement = {kind: "node", nid : nid} 
-        return {state: st+1, w: w.concat(node1), ans: null}
+        return {state: st+1, w: w.concat(node1), ans: nid}
+    }
+}
+
+function userNode(nid: NodeId): Dot<NodeId> {
+    return function(st: number, w: Array<ModelElement>) {
+        let node1 : ModelElement = {kind: "node", nid : nid} 
+        return {state: st+1, w: w.concat(node1), ans: nid}
+    }
+}
+
+function edge(n1: NodeId, n2: NodeId): Dot<null> {
+    return function(st: number, w: Array<ModelElement>) {
+        let edge1 : ModelElement = {kind: "connector", cfrom : n1, cto: n2} 
+        return {state: st+1, w: w.concat(edge1), ans: null}
     }
 }
 
 
-let prog1 = outputDot(seqLeft(node(), node()))
-console.log(prog1)
+let prog1: Dot<null> = (
+    flatMap(userNode("box"), 
+            function(n1: NodeId) { return flatMap(userNode("disc"), function(n2: NodeId) { return edge(n1,n2) })}))
+
+console.log(outputDot(prog1))
 
 
